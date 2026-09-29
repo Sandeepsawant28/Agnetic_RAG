@@ -1,5 +1,5 @@
 from app.llm import chat
-from app.retrieval.search import search_code
+from app.retrieval.hybrid import hybrid_search
 
 SYSTEM_PROMPT = """You are a codebase analysis assistant.
 Use only the retrieved repository snippets provided.
@@ -17,7 +17,7 @@ def format_context(hits):
 
 
 def answer(repo_id: str, question: str):
-    hits = search_code(repo_id, question)
+    hits = hybrid_search(repo_id, question)
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": f"Snippets:\n{format_context(hits)}\n\nQuestion: {question}"},

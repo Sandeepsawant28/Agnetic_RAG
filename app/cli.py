@@ -28,4 +28,4 @@ else:
     print(text)
     print("\nSources retrieved:")
     for h in hits:
-        print(f"  {h['file_path']}:{h['start_line']}-{h['end_line']}  score={h['score']}")
+        print(f"  {h['file_path']}:{h['start_line']}-{h['end_line']}  rrf_score={h['rrf_score']}")

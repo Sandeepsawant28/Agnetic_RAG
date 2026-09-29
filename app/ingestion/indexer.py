@@ -1,6 +1,8 @@
 import chromadb
 from pathlib import Path
 from sentence_transformers import SentenceTransformer
+import json
+from pathlib import Path as PathLib
 
 from app.config import CHROMA_DIR, EMBED_MODEL
 from app.ingestion.chunker import LANGS, chunk_file, iter_source_files
@@ -34,6 +36,9 @@ def index_repo(repo_id: str, root: Path) -> int:
         rel = str(f.relative_to(root)).replace("\\", "/")
         chunks += chunk_file(text, rel, LANGS[f.suffix])
 
+    save_chunks_for_bm25(repo_id, chunks)
+
+    # Put path + symbol in the embedded text so "user creation route" can match file names
     # Put path + symbol in the embedded text so "user creation route" can match file names
     texts = [f"{c.file_path} {c.symbol}\n{c.content}" for c in chunks]
     vectors = get_model().encode(texts, batch_size=32, show_progress_bar=True).tolist()
@@ -50,3 +55,11 @@ def index_repo(repo_id: str, root: Path) -> int:
                         "end_line": c.end_line} for c in part],
         )
     return len(chunks)
+
+def save_chunks_for_bm25(repo_id: str, chunks):
+    out_dir = PathLib("data/bm25")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    records = [{"file_path": c.file_path, "language": c.language, "symbol": c.symbol,
+                "start_line": c.start_line, "end_line": c.end_line, "content": c.content}
+               for c in chunks]
+    (out_dir / f"{repo_id}.json").write_text(json.dumps(records))

@@ -1,0 +1,6 @@
+[
+  {"question": "What does the CaseInsensitiveDict class do?", "expected_file_substring": "structures.py"},
+  {"question": "How does the app handle status codes?", "expected_file_substring": "core.py"},
+  {"question": "Where are the tests located?", "expected_file_substring": "test_"},
+  {"question": "Where is the main entry point?", "expected_file_substring": "core.py"}
+]

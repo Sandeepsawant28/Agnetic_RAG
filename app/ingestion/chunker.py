@@ -48,12 +48,13 @@ def chunk_python(text, rel):
     except SyntaxError:
         return chunk_lines(lines, rel, "python")
 
-    chunks, first_def = [], None
+    chunks, first_def, last_def_end = [], None, 0
     for node in tree.body:
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
             start = min([node.lineno] + [d.lineno for d in node.decorator_list])
             end = node.end_lineno
             first_def = start if first_def is None else first_def
+            last_def_end = max(last_def_end, end)
             seg = lines[start - 1:end]
             if len(seg) > MAX_CHUNK_LINES:
                 chunks += chunk_lines(seg, rel, "python", node.name, offset=start - 1)
@@ -64,6 +65,13 @@ def chunk_python(text, rel):
     if header_end > 0 and "\n".join(lines[:header_end]).strip():
         chunks.append(Chunk(rel, "python", "<module>", 1, header_end,
                             "\n".join(lines[:header_end])))
+
+    if last_def_end < len(lines):
+        tail = lines[last_def_end:]
+        if "\n".join(tail).strip():
+            chunks.append(Chunk(rel, "python", "<main_block>", last_def_end + 1,
+                                len(lines), "\n".join(tail)))
+
     return chunks
 
 
