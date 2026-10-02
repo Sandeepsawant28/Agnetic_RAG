@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RepoPilot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #eef1f4;
+    --surface: #ffffff;
+    --ink: #1b2430;
+    --muted: #5e6b7a;
+    --line: #d5dbe2;
+    --accent: #0f6e6e;
+    --accent-soft: #dcefee;
+    --code-bg: #f1f4f7;
+    --danger: #a62b2b;
+    --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #151a20; --surface: #1d242c; --ink: #e6ebf0; --muted: #93a0ae;
+      --line: #313b46; --accent: #4fc1bd; --accent-soft: #1f3a3b;
+      --code-bg: #131920; --danger: #ff8b8b;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body { background: var(--bg); color: var(--ink); font: 15px/1.55 var(--sans); display: flex; flex-direction: column; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  header { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; padding: 12px 20px; background: var(--surface); border-bottom: 1px solid var(--line); }
+  h1 { font-size: 17px; font-weight: 600; margin: 0 8px 0 0; letter-spacing: -0.01em; }
+  .group { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  label { color: var(--muted); font-size: 13px; }
+  select, input[type=text], input[type=file] { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; }
+  input[type=text].id { width: 130px; }
+  button { font: inherit; font-weight: 500; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent); color: #fff; padding: 7px 14px; cursor: pointer; }
+  @media (prefers-color-scheme: dark) { button { color: #0b1a1a; } }
+  button.ghost { background: transparent; color: var(--accent); }
+  button:disabled { opacity: .5; cursor: progress; }
+  #status { font-size: 13px; color: var(--muted); margin-left: auto; }
+  #status.err { color: var(--danger); }
+
+  main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); }
+  @media (max-width: 860px) { main { grid-template-columns: 1fr; overflow: auto; } }
+  section { min-height: 0; display: flex; flex-direction: column; }
+  .pane-title { padding: 12px 20px 8px; font-size: 13px; color: var(--muted); font-weight: 500; }
+  .scroll { flex: 1; overflow: auto; padding: 0 20px 20px; }
+
+  #answerPane { border-right: 1px solid var(--line); }
+  .ask { display: flex; gap: 8px; padding: 14px 20px; border-top: 1px solid var(--line); background: var(--surface); }
+  .ask input { flex: 1; font-size: 15px; padding: 9px 12px; }
+
+  .answer { max-width: 70ch; }
+  .answer p { margin: 0 0 12px; }
+  .answer code { font: 13px var(--mono); background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+  .answer pre { background: var(--code-bg); border: 1px solid var(--line); border-radius: 6px; padding: 12px; overflow-x: auto; margin: 0 0 14px; }
+  .answer pre code { background: none; padding: 0; }
+  a.cite { font: 12.5px var(--mono); color: var(--accent); background: var(--accent-soft); padding: 1px 6px; border-radius: 4px; text-decoration: none; white-space: nowrap; }
+  a.cite:hover { text-decoration: underline; }
+  .empty { color: var(--muted); max-width: 52ch; padding-top: 8px; }
+  .question-echo { font-weight: 600; margin-bottom: 10px; }
+
+  .src { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; margin-bottom: 12px; overflow: hidden; }
+  .src.hit { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+  .src-head { display: flex; justify-content: space-between; gap: 12px; padding: 8px 12px; border-bottom: 1px solid var(--line); font: 12.5px var(--mono); }
+  .src-head .path { overflow-wrap: anywhere; }
+  .src-head .meta { color: var(--muted); white-space: nowrap; }
+  .src pre { margin: 0; padding: 10px 12px; max-height: 260px; overflow: auto; font: 12.5px/1.5 var(--mono); background: var(--code-bg); }
+  .src .sym { padding: 6px 12px 0; font-size: 12.5px; color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>RepoPilot</h1>
+  <div class="group">
+    <label for="repoSel">Repository</label>
+    <select id="repoSel"></select>
+  </div>
+  <div class="group">
+    <label for="zip">Add a repo</label>
+    <input type="file" id="zip" accept=".zip">
+    <input type="text" id="newId" class="id" placeholder="repo name" aria-label="Repo name">
+    <button class="ghost" id="indexBtn">Index zip</button>
+  </div>
+  <div id="status" role="status"></div>
+</header>
+
+<main>
+  <section id="answerPane">
+    <div class="pane-title">Answer</div>
+    <div class="scroll" id="answerBox">
+      <p class="empty">Pick a repository, then ask where something lives or how it works. Answers cite file and line ranges; click a citation to jump to its code.</p>
+    </div>
+    <form class="ask" id="askForm">
+      <input type="text" id="q" placeholder="Where is the request timeout handled?" aria-label="Question" autocomplete="off">
+      <button id="askBtn" type="submit">Ask</button>
+    </form>
+  </section>
+
+  <section>
+    <div class="pane-title" id="srcTitle">Retrieved code</div>
+    <div class="scroll" id="srcBox"></div>
+  </section>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let sources = [];
+
+function setStatus(msg, isErr = false) {
+  const el = $('#status');
+  el.textContent = msg;
+  el.className = isErr ? 'err' : '';
+}
+
+async function api(path, opts) {
+  const r = await fetch('/api' + path, opts);
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.detail || ('Request failed (' + r.status + ')'));
+  return data;
+}
+
+async function loadRepos(select) {
+  const { repos } = await api('/repos');
+  const sel = $('#repoSel');
+  sel.innerHTML = repos.length
+    ? repos.map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join('')
+    : '<option value="">No repositories yet</option>';
+  if (select) sel.value = select;
+}
+
+function renderAnswer(text) {
+  return text.split('```').map((part, i) => {
+    if (i % 2 === 1) {
+      const nl = part.indexOf('\n');
+      return `<pre><code>${esc(nl >= 0 ? part.slice(nl + 1) : part)}</code></pre>`;
+    }
+    let h = esc(part)
+      .replace(/`([^`\n]+)`/g, '<code>$1</code>')
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    h = h.replace(/([\w.\/\\-]+):(\d+)[-\u2010-\u2015](\d+)/g, (m, f, s) => {
+      const idx = sources.findIndex(x => x.file_path === f && +s >= x.start_line && +s <= x.end_line);
+      return idx >= 0 ? `<a href="#" class="cite" data-i="${idx}">${m}</a>` : m;
+    });
+    return h.split(/\n{2,}/).filter(Boolean).map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('');
+  }).join('');
+}
+
+function renderSources() {
+  $('#srcTitle').textContent = sources.length ? `Retrieved code (${sources.length})` : 'Retrieved code';
+  $('#srcBox').innerHTML = sources.map((s, i) => `
+    <div class="src" id="src-${i}">
+      <div class="src-head">
+        <span class="path">${esc(s.file_path)}:${s.start_line}-${s.end_line}</span>
+        <span class="meta">score ${s.rrf_score ?? '-'}</span>
+      </div>
+      ${s.symbol ? `<div class="sym">${esc(s.symbol)}</div>` : ''}
+      <pre>${esc(s.content)}</pre>
+    </div>`).join('');
+}
+
+$('#answerBox').addEventListener('click', e => {
+  const a = e.target.closest('a.cite');
+  if (!a) return;
+  e.preventDefault();
+  document.querySelectorAll('.src.hit').forEach(el => el.classList.remove('hit'));
+  const card = $('#src-' + a.dataset.i);
+  card.classList.add('hit');
+  card.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'nearest' });
+});
+
+$('#askForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const repo_id = $('#repoSel').value, question = $('#q').value.trim();
+  if (!repo_id) return setStatus('Index a repository first.', true);
+  if (!question) return;
+  $('#askBtn').disabled = true;
+  setStatus('Searching the code and writing an answer...');
+  $('#answerBox').innerHTML = `<div class="question-echo">${esc(question)}</div><p class="empty">Working on it...</p>`;
+  try {
+    const data = await api('/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ repo_id, question })
+    });
+    sources = data.sources;
+    $('#answerBox').innerHTML = `<div class="question-echo">${esc(question)}</div><div class="answer">${renderAnswer(data.answer)}</div>`;
+    renderSources();
+    setStatus('');
+  } catch (err) {
+    $('#answerBox').innerHTML = `<p class="empty">The question could not be answered.</p>`;
+    setStatus(err.message, true);
+  } finally {
+    $('#askBtn').disabled = false;
+  }
+});
+
+$('#indexBtn').addEventListener('click', async () => {
+  const file = $('#zip').files[0], repo_id = $('#newId').value.trim();
+  if (!file) return setStatus('Choose a .zip file first.', true);
+  if (!repo_id) return setStatus('Give the repo a name (letters, numbers, - and _).', true);
+  const fd = new FormData();
+  fd.append('repo_id', repo_id);
+  fd.append('file', file);
+  $('#indexBtn').disabled = true;
+  setStatus('Indexing... this can take a minute for large repos.');
+  try {
+    const d = await api('/ingest', { method: 'POST', body: fd });
+    await loadRepos(d.repo_id);
+    setStatus(`Indexed ${d.chunks} chunks into "${d.repo_id}".`);
+  } catch (err) {
+    setStatus(err.message, true);
+  } finally {
+    $('#indexBtn').disabled = false;
+  }
+});
+
+loadRepos().catch(err => setStatus(err.message, true));
+</script>
+</body>
+</html>
